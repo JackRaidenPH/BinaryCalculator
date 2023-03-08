@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="480.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="dev.jackraidenph.binarycalculator.Controller">
+   <children>
+      <TextArea fx:id="expressionArea" minHeight="100.0" minWidth="600.0" prefHeight="140.0" prefWidth="600.0" promptText="Expression to evaluate (Supports + - * /)" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0" />
+      <Button fx:id="evaluateButton" mnemonicParsing="false" onAction="#onEvaluate" style="-fx-focus-traversable: false;" text="Evaluate" AnchorPane.leftAnchor="20.0" AnchorPane.topAnchor="170.0" />
+      <ScrollPane layoutX="20.0" layoutY="205.0" prefHeight="255.0" prefWidth="600.0" AnchorPane.bottomAnchor="20.0">
+        <content>
+          <AnchorPane>
+               <children>
+                  <Label fx:id="answerLabel" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0" />
+               </children>
+            </AnchorPane>
+        </content>
+      </ScrollPane>
+   </children>
+</AnchorPane>
