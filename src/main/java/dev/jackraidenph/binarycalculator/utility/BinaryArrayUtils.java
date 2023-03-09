@@ -3,119 +3,120 @@ package dev.jackraidenph.binarycalculator.utility;
 import javafx.util.Pair;
 
 public class BinaryArrayUtils {
-    public static Pair<boolean[], Boolean> binaryAddGetCarry(boolean[] addTo, boolean[] toAdd) {
-        int opLength = Math.max(addTo.length, toAdd.length);
-        boolean v1, v2, v3, C = false;
-        boolean[] X = new boolean[opLength];
-        boolean[] Y = new boolean[opLength];
-        System.arraycopy(addTo, 0, X, 0, addTo.length);
-        System.arraycopy(toAdd, 0, Y, 0, toAdd.length);
-        for (int i = 0; i < opLength; i++) {
-            v1 = X[i] ^ Y[i];
-            v2 = X[i] & Y[i];
-            v3 = v1 & C;
-            X[i] = v1 ^ C;
-            C = v2 | v3;
+    public static Pair<boolean[], Boolean> binaryAddGetCarry(boolean[] addTo, boolean[] addendum) {
+        int operationLength = Math.max(addTo.length, addendum.length);
+        boolean v1, v2, v3, carry = false;
+        boolean[] addToCopy = new boolean[operationLength];
+        boolean[] addendumCopy = new boolean[operationLength];
+        System.arraycopy(addTo, 0, addToCopy, 0, addTo.length);
+        System.arraycopy(addendum, 0, addendumCopy, 0, addendum.length);
+        for (int i = 0; i < operationLength; i++) {
+            v1 = addToCopy[i] ^ addendumCopy[i];
+            v2 = addToCopy[i] & addendumCopy[i];
+            v3 = v1 & carry;
+            addToCopy[i] = v1 ^ carry;
+            carry = v2 | v3;
         }
-        return new Pair<>(X, C);
+        return new Pair<>(addToCopy, carry);
     }
 
-    public static boolean[] binaryAdd(boolean[] addTo, boolean[] toAdd) {
-        return binaryAddGetCarry(addTo, toAdd).getKey();
+    public static boolean[] binaryAdd(boolean[] addTo, boolean[] addendum) {
+        return binaryAddGetCarry(addTo, addendum).getKey();
     }
 
-    public static boolean[] binaryAddFull(boolean[] addTo, boolean[] toAdd) {
-        Pair<boolean[], Boolean> pair = binaryAddGetCarry(addTo, toAdd);
+    public static boolean[] binaryAddFull(boolean[] addTo, boolean[] addendum) {
+        Pair<boolean[], Boolean> pair = binaryAddGetCarry(addTo, addendum);
         boolean[] res = pair.getKey();
-        if(pair.getValue())
+        if (pair.getValue()) {
             res = binaryAddFull(res, new boolean[]{true});
+        }
         return res;
     }
 
     public static Pair<boolean[], Boolean> incrementGetCarry(boolean[] addTo) {
-        boolean[] inc = new boolean[addTo.length];
-        inc[0] = true;
-        return binaryAddGetCarry(addTo, inc);
+        boolean[] increment = new boolean[addTo.length];
+        increment[0] = true;
+        return binaryAddGetCarry(addTo, increment);
     }
 
-    public static boolean[] increment(boolean[] addTo) {
+    public static boolean[] binaryIncrement(boolean[] addTo) {
         return incrementGetCarry(addTo).getKey();
     }
 
-    public static Pair<boolean[], Boolean> decrementGetBorrow(boolean[] subtractFrom) {
-        boolean[] inc = new boolean[subtractFrom.length];
-        inc[0] = true;
-        return binarySubtractGetBorrow(subtractFrom, inc);
+    public static Pair<boolean[], Boolean> binaryDecrementGetBorrow(boolean[] minuend) {
+        boolean[] decrement = new boolean[minuend.length];
+        decrement[0] = true;
+        return binarySubtractGetBorrow(minuend, decrement);
     }
 
-    public static boolean[] decrement(boolean[] subtractFrom) {
-        return decrementGetBorrow(subtractFrom).getKey();
+    public static boolean[] binaryDecrement(boolean[] subtrahend) {
+        return binaryDecrementGetBorrow(subtrahend).getKey();
     }
 
-    public static Pair<boolean[], Boolean> binarySubtractGetBorrow(boolean[] subtractFrom, boolean[] toSubtract) {
-        int opLength = Math.max(subtractFrom.length, toSubtract.length);
-        boolean v1, v2, v3, B = false;
-        boolean[] X = new boolean[opLength];
-        boolean[] Y = new boolean[opLength];
-        System.arraycopy(subtractFrom, 0, X, 0, subtractFrom.length);
-        System.arraycopy(toSubtract, 0, Y, 0, toSubtract.length);
+    public static Pair<boolean[], Boolean> binarySubtractGetBorrow(boolean[] minuend, boolean[] subtrahend) {
+        int opLength = Math.max(minuend.length, subtrahend.length);
+        boolean v1, v2, v3, borrow = false;
+        boolean[] minuendCopy = new boolean[opLength];
+        boolean[] subtrahendCopy = new boolean[opLength];
+        System.arraycopy(minuend, 0, minuendCopy, 0, minuend.length);
+        System.arraycopy(subtrahend, 0, subtrahendCopy, 0, subtrahend.length);
         for (int i = 0; i < opLength; i++) {
-            v1 = X[i] ^ Y[i];
-            v2 = !X[i] & Y[i];
-            v3 = !v1 & B;
-            X[i] = v1 ^ B;
-            B = v2 | v3;
+            v1 = minuendCopy[i] ^ subtrahendCopy[i];
+            v2 = !minuendCopy[i] & subtrahendCopy[i];
+            v3 = !v1 & borrow;
+            minuendCopy[i] = v1 ^ borrow;
+            borrow = v2 | v3;
         }
-        return new Pair<>(X, B);
+        return new Pair<>(minuendCopy, borrow);
     }
 
-    public static boolean[] binarySubtract(boolean[] subtractFrom, boolean[] toSubtract) {
-        return binarySubtractGetBorrow(subtractFrom, toSubtract).getKey();
+    public static boolean[] binarySubtract(boolean[] minuend, boolean[] subtrahend) {
+        return binarySubtractGetBorrow(minuend, subtrahend).getKey();
     }
 
-    public static boolean[] binaryMultiply(boolean[] multiple, boolean[] multiplyBy) {
-        int opLength = Math.max(multiple.length, multiplyBy.length);
-        boolean[] X = new boolean[opLength * 2]; //Multiplicand
-        boolean[] Y = new boolean[opLength]; //Multiplier
-        System.arraycopy(multiple, 0, X, 0, multiple.length);
-        System.arraycopy(multiplyBy, 0, Y, 0, multiplyBy.length);
-        boolean[] O = new boolean[opLength * 2]; //Result
+    public static boolean[] binaryMultiply(boolean[] multiplicand, boolean[] multiplier) {
+        int operationLength = Math.max(multiplicand.length, multiplier.length);
+        boolean[] multiplicandCopy = new boolean[operationLength * 2]; //Multiplicand
+        boolean[] multiplierCopy = new boolean[operationLength]; //Multiplier
+        System.arraycopy(multiplicand, 0, multiplicandCopy, 0, multiplicand.length);
+        System.arraycopy(multiplier, 0, multiplierCopy, 0, multiplier.length);
+        boolean[] result = new boolean[operationLength * 2]; //Result
 
-        for (int i = 0; i < opLength; i++) {
-            //O = binaryShiftRight(O, 1);
-            if (Y[i])
-                O = binaryAddFull(O, X);
-            X = binaryShiftLeft(X, 1);
+        for (int currentBit = 0; currentBit < operationLength; currentBit++) {
+            if (multiplierCopy[currentBit]) {
+                result = binaryAddFull(result, multiplicandCopy);
+            }
+            multiplicandCopy = binaryShiftLeft(multiplicandCopy, 1);
         }
 
-        return O;
+        return result;
     }
 
     public static Pair<boolean[], boolean[]> binaryDivide(boolean[] dividend, boolean[] divisor) {
-        int opLength = Math.max(dividend.length, divisor.length);
-        boolean[] Q = new boolean[opLength]; //Quotient
-        boolean[] R = new boolean[opLength]; //Remainder
-        boolean[] N = new boolean[opLength]; //Dividend
-        boolean[] D = new boolean[opLength]; //Divisor
-        System.arraycopy(dividend, 0, N, 0, dividend.length);
-        System.arraycopy(divisor, 0, D, 0, divisor.length);
+        int operationLength = Math.max(dividend.length, divisor.length);
+        boolean[] quotient = new boolean[operationLength]; //Quotient
+        boolean[] remainder = new boolean[operationLength]; //Remainder
+        boolean[] dividendCopy = new boolean[operationLength]; //Dividend
+        boolean[] divisorCopy = new boolean[operationLength]; //Divisor
+        System.arraycopy(dividend, 0, dividendCopy, 0, dividend.length);
+        System.arraycopy(divisor, 0, divisorCopy, 0, divisor.length);
 
-        for (int i = opLength - 1; i >= 0; i--) {
-            R = binaryShiftLeft(R, 1);
-            R[0] = N[i];
+        for (int currentBit = operationLength - 1; currentBit >= 0; currentBit--) {
+            remainder = binaryShiftLeft(remainder, 1);
+            remainder[0] = dividendCopy[currentBit];
 
-            if (binaryGreaterOrEquals(R, D)) {
-                R = binarySubtract(R, D);
-                Q[i] = true;
+            if (binaryGreaterOrEquals(remainder, divisorCopy)) {
+                remainder = binarySubtract(remainder, divisorCopy);
+                quotient[currentBit] = true;
             }
         }
 
-        return new Pair<>(Q, R);
+        return new Pair<>(quotient, remainder);
     }
 
     public static boolean[] binaryShiftLeft(boolean[] toShift, int shift) {
-        if(shift <= 0)
-            return  toShift;
+        if (shift <= 0)
+            return toShift;
 
         boolean[] buffer = new boolean[toShift.length];
         System.arraycopy(toShift, 0, buffer, shift, toShift.length - shift);
@@ -123,8 +124,8 @@ public class BinaryArrayUtils {
     }
 
     public static boolean[] binaryShiftRight(boolean[] toShift, int shift) {
-        if(shift <= 0)
-            return  toShift;
+        if (shift <= 0)
+            return toShift;
 
         boolean[] buffer = new boolean[toShift.length];
         System.arraycopy(toShift, shift, buffer, 0, toShift.length - shift);
@@ -133,31 +134,39 @@ public class BinaryArrayUtils {
 
     public static int magnitudeFromBinary(boolean[] binary) {
         int res = 0;
-        for (int i = 0; i < binary.length; i++)
-            if (binary[i])
-                res += Math.pow(2, i);
+        for (int currentBit = 0; currentBit < binary.length; currentBit++) {
+            if (binary[currentBit]) {
+                res += Math.pow(2, currentBit);
+            }
+        }
         return res;
     }
 
     public static boolean[] magnitudeToBinary(Integer integer, Integer size) {
         integer = Math.abs(integer);
         boolean[] out = new boolean[size];
-        for (int i = 0; i < size; i++)
-            out[i] = (integer & (1 << i)) != 0;
+        for (int currentBit = 0; currentBit < size; currentBit++) {
+            out[currentBit] = (integer & (1 << currentBit)) != 0;
+        }
         return out;
     }
 
     public static int mostSignificantOne(boolean[] container) {
-        for (int i = container.length - 1; i >= 0; i--)
-            if (container[i])
-                return i;
+        for (int currentBit = container.length - 1; currentBit >= 0; currentBit--) {
+            if (container[currentBit]){
+                return currentBit;
+            }
+        }
+
         return -1;
     }
 
     public static int leastSignificantOne(boolean[] container) {
-        for (int i = 0; i < container.length; i++)
-            if (container[i])
-                return i;
+        for (int currentBit = 0; currentBit < container.length; currentBit++) {
+            if (container[currentBit]) {
+                return currentBit;
+            }
+        }
         return -1;
     }
 
@@ -166,27 +175,27 @@ public class BinaryArrayUtils {
     }
 
     public static boolean binaryGreaterOrEquals(boolean[] first, boolean[] second) {
-        int opLength = Math.max(first.length, second.length);
-        boolean[] F = new boolean[opLength];
-        boolean[] S = new boolean[opLength];
-        System.arraycopy(first, 0, F, 0, first.length);
-        System.arraycopy(second, 0, S, 0, second.length);
-        for (int i = opLength - 1; i >= 0; i--) {
-            if (F[i] != S[i])
-                return F[i];
+        int operationLength = Math.max(first.length, second.length);
+        boolean[] firstCorrected = new boolean[operationLength];
+        boolean[] secondCorrected = new boolean[operationLength];
+        System.arraycopy(first, 0, firstCorrected, 0, first.length);
+        System.arraycopy(second, 0, secondCorrected, 0, second.length);
+        for (int currentBit = operationLength - 1; currentBit >= 0; currentBit--) {
+            if (firstCorrected[currentBit] != secondCorrected[currentBit])
+                return firstCorrected[currentBit];
         }
         return true;
     }
 
     public static boolean binaryLessOrEquals(boolean[] first, boolean[] second) {
         int opLength = Math.max(first.length, second.length);
-        boolean[] F = new boolean[opLength];
-        boolean[] S = new boolean[opLength];
-        System.arraycopy(first, 0, F, 0, first.length);
-        System.arraycopy(second, 0, S, 0, second.length);
-        for (int i = opLength - 1; i >= 0; i--) {
-            if (F[i] != S[i])
-                return !F[i];
+        boolean[] firstCorrected = new boolean[opLength];
+        boolean[] secondCorrected = new boolean[opLength];
+        System.arraycopy(first, 0, firstCorrected, 0, first.length);
+        System.arraycopy(second, 0, secondCorrected, 0, second.length);
+        for (int currentBit = opLength - 1; currentBit >= 0; currentBit--) {
+            if (firstCorrected[currentBit] != secondCorrected[currentBit])
+                return !firstCorrected[currentBit];
         }
         return true;
     }

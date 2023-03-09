@@ -8,7 +8,7 @@ import java.util.Arrays;
 public class BinaryInteger extends BinaryContainer<Integer, BinaryInteger> {
 
     private final BinaryInteger.RepresentationType representation;
-    public static int LENGTH = 32;
+    public static final int LENGTH = 32;
 
     public BinaryInteger(Integer integer, RepresentationType type) {
         super(LENGTH);
@@ -85,7 +85,7 @@ public class BinaryInteger extends BinaryContainer<Integer, BinaryInteger> {
         } else {
             Pair<boolean[], Boolean> res = BinaryArrayUtils.binaryAddGetCarry(copy.get(), toAdd.get());
             if (getRepresentation().equals(RepresentationType.ONES_COMPLEMENT) && res.getValue())
-                return copy.copyFrom(BinaryArrayUtils.increment(res.getKey()));
+                return copy.copyFrom(BinaryArrayUtils.binaryIncrement(res.getKey()));
             return copy.copyFrom(res.getKey());
         }
     }

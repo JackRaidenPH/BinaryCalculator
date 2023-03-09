@@ -5,9 +5,10 @@ import dev.jackraidenph.binarycalculator.utility.BinaryArrayUtils;
 import java.util.Arrays;
 
 public class BinaryFloat extends BinaryContainer<Float, BinaryFloat> {
-    public static int LENGTH = 32;
-    public static int MANTISSA_SIZE = 23;
-    public static int EXPONENT_SIZE = 8;
+    public static final int LENGTH = 32;
+    public static final int MANTISSA_SIZE = 23;
+    public static final int EXPONENT_SIZE = 8;
+    public static final int DECIMAL_BIAS = 127;
     private static final boolean[] bias = new boolean[]{
             true, true, true, true, true, true, true, false
     };
@@ -22,7 +23,7 @@ public class BinaryFloat extends BinaryContainer<Float, BinaryFloat> {
     }
 
     private void decimalToBinary(Float pFloat) {
-        if(pFloat == 0)
+        if (pFloat == 0)
             return;
 
         int sign = (int) Math.signum(pFloat);
@@ -32,20 +33,20 @@ public class BinaryFloat extends BinaryContainer<Float, BinaryFloat> {
 
         int fractionOffset = 0;
 
-        boolean[] binaryIntegerPart = BinaryArrayUtils.magnitudeToBinary(integer, 24);
-        boolean[] binaryFractionalPart = new boolean[24];
+        boolean[] binaryIntegerPart = BinaryArrayUtils.magnitudeToBinary(integer, MANTISSA_SIZE + 1);
+        boolean[] binaryFractionalPart = new boolean[MANTISSA_SIZE + 1];
         int integerOffset = BinaryArrayUtils.mostSignificantOne(binaryIntegerPart);
 
-        int eCorrection = 0;
-        while (!(Math.signum(fractional) == 0) && fractional < 1.0f && eCorrection < 127) {
+        int fractionalOffset = 0;
+        while (!(Math.signum(fractional) == 0) && fractional < 1.0f && fractionalOffset < DECIMAL_BIAS) {
             fractional *= 2;
-            eCorrection++;
+            fractionalOffset++;
         }
 
-        for (int i = 23; (i >= 0) && !(Math.signum(fractional) == 0); i--) {
+        for (int bit = MANTISSA_SIZE; (bit >= 0) && !(Math.signum(fractional) == 0); bit--) {
             if (fractional >= 1.0) {
-                fractionOffset = Math.max(fractionOffset, i);
-                binaryFractionalPart[i] = true;
+                fractionOffset = Math.max(fractionOffset, bit);
+                binaryFractionalPart[bit] = true;
                 fractional -= 1;
             }
             fractional *= 2;
@@ -56,18 +57,39 @@ public class BinaryFloat extends BinaryContainer<Float, BinaryFloat> {
 
         if (integerOffset >= 0) {
             System.arraycopy(binaryIntegerPart, 0, container, MANTISSA_SIZE - integerOffset, integerOffset);
-            if(eCorrection != 0)
-                System.arraycopy(binaryFractionalPart, integerOffset + eCorrection, container, 0, MANTISSA_SIZE - integerOffset - (eCorrection - 1));
-            biasedExponent = BinaryArrayUtils.binaryAdd(biasedExponent, BinaryArrayUtils.magnitudeToBinary(integerOffset, EXPONENT_SIZE));
-        }
-        else {
-            System.arraycopy(binaryFractionalPart, 0, container, MANTISSA_SIZE - BinaryArrayUtils.mostSignificantOne(binaryFractionalPart), BinaryArrayUtils.mostSignificantOne(binaryFractionalPart));
-            biasedExponent = BinaryArrayUtils.binarySubtract(biasedExponent, BinaryArrayUtils.magnitudeToBinary(eCorrection, EXPONENT_SIZE));
+            if (fractionalOffset != 0) {
+                System.arraycopy(
+                        binaryFractionalPart,
+                        integerOffset + fractionalOffset,
+                        container,
+                        0,
+                        MANTISSA_SIZE - integerOffset - (fractionalOffset - 1));
+            }
+            biasedExponent = addToExponent(biasedExponent, integer);
+        } else {
+            System.arraycopy(
+                    binaryFractionalPart,
+                    0,
+                    container,
+                    MANTISSA_SIZE - BinaryArrayUtils.mostSignificantOne(binaryFractionalPart),
+                    BinaryArrayUtils.mostSignificantOne(binaryFractionalPart));
+            biasedExponent = subtractExponent(biasedExponent, fractionalOffset);
         }
 
-        System.arraycopy(biasedExponent, 0, container, MANTISSA_SIZE, EXPONENT_SIZE);
+        setExponent(biasedExponent);
+        setSign(sign < 0);
+    }
 
-        container[LENGTH - 1] = sign < 0;
+    private boolean[] subtractExponent(boolean[] toCorrect, int correction) {
+        return BinaryArrayUtils.binarySubtract(
+                toCorrect,
+                BinaryArrayUtils.magnitudeToBinary(correction, EXPONENT_SIZE));
+    }
+
+    private boolean[] addToExponent(boolean[] toCorrect, int correction) {
+        return BinaryArrayUtils.binaryAdd(
+                toCorrect,
+                BinaryArrayUtils.magnitudeToBinary(correction, EXPONENT_SIZE));
     }
 
     @Override
@@ -77,26 +99,27 @@ public class BinaryFloat extends BinaryContainer<Float, BinaryFloat> {
         boolean sign = copy.container[LENGTH - 1] ^ toMultiplyBy.container[LENGTH - 1];
         copy.setSign(sign);
 
-        boolean[] e1 = copy.getExponent();
-        boolean[] e2 = toMultiplyBy.getExponent();
-        boolean[] e = BinaryArrayUtils.binaryAdd(e1, e2);
-        e = BinaryArrayUtils.binarySubtract(e, bias);
+        boolean[] firstExponent = copy.getExponent();
+        boolean[] secondExponent = toMultiplyBy.getExponent();
+        boolean[] resultExponent = BinaryArrayUtils.binaryAdd(firstExponent, secondExponent);
+        resultExponent = BinaryArrayUtils.binarySubtract(resultExponent, bias);
 
-        boolean[] mul = BinaryArrayUtils.binaryMultiply(copy.getFullMantissa(), toMultiplyBy.getFullMantissa());
+        boolean[] multiple = BinaryArrayUtils.binaryMultiply(copy.getFullMantissa(),
+                toMultiplyBy.getFullMantissa());
 
-        if (mul[MANTISSA_SIZE * 2 + 1]) {
-            mul = BinaryArrayUtils.binaryShiftRight(mul, 1);
-            e = BinaryArrayUtils.increment(e);
+        if (multiple[MANTISSA_SIZE * 2 + 1]) {
+            multiple = BinaryArrayUtils.binaryShiftRight(multiple, 1);
+            resultExponent = BinaryArrayUtils.binaryIncrement(resultExponent);
         }
 
-        int shift = MANTISSA_SIZE * 2 - (BinaryArrayUtils.mostSignificantOne(mul) - 1);
-        mul = BinaryArrayUtils.binaryShiftLeft(mul, shift);
+        int shift = MANTISSA_SIZE * 2 - (BinaryArrayUtils.mostSignificantOne(multiple) - 1);
+        multiple = BinaryArrayUtils.binaryShiftLeft(multiple, shift);
         boolean[] shorten = new boolean[MANTISSA_SIZE];
-        System.arraycopy(mul, MANTISSA_SIZE + 1, shorten, 0, MANTISSA_SIZE);
+        System.arraycopy(multiple, MANTISSA_SIZE + 1, shorten, 0, MANTISSA_SIZE);
 
-        for (int i = 0; i < shift - 1; i++) e = BinaryArrayUtils.decrement(e);
+        for (int i = 0; i < shift - 1; i++) resultExponent = BinaryArrayUtils.binaryDecrement(resultExponent);
 
-        copy.setExponent(e);
+        copy.setExponent(resultExponent);
         copy.setMantissa(shorten);
 
         return copy;
@@ -117,41 +140,41 @@ public class BinaryFloat extends BinaryContainer<Float, BinaryFloat> {
         boolean sign = copy.container[LENGTH - 1] ^ toDivideBy.container[LENGTH - 1];
         copy.setSign(sign);
 
-        boolean[] e1 = copy.getExponent();
-        boolean[] e2 = toDivideBy.getExponent();
-        boolean[] e;
+        boolean[] firstExponent = copy.getExponent();
+        boolean[] secondExponent = toDivideBy.getExponent();
+        boolean[] resultExponent;
 
         //Calculate result exponent
-        if (BinaryArrayUtils.binaryGreaterOrEquals(e1, e2)) {
-            e = BinaryArrayUtils.binarySubtract(e1, e2);
-            e = BinaryArrayUtils.binaryAdd(bias, e);
+        if (BinaryArrayUtils.binaryGreaterOrEquals(firstExponent, secondExponent)) {
+            resultExponent = BinaryArrayUtils.binarySubtract(firstExponent, secondExponent);
+            resultExponent = BinaryArrayUtils.binaryAdd(bias, resultExponent);
         } else {
-            e = BinaryArrayUtils.binarySubtract(e2, e1);
-            e = BinaryArrayUtils.binarySubtract(bias, e);
+            resultExponent = BinaryArrayUtils.binarySubtract(secondExponent, firstExponent);
+            resultExponent = BinaryArrayUtils.binarySubtract(bias, resultExponent);
         }
 
         //Due to combination of non-resizable nature of arrays,
         //binary nature of boolean and leading zeroes significance for normalization,
         //potential leading zero must be accounted manually
         if (!BinaryArrayUtils.binaryGreaterOrEquals(copy.getFullMantissa(), toDivideBy.getFullMantissa()))
-            e = BinaryArrayUtils.decrement(e);
+            resultExponent = BinaryArrayUtils.binaryDecrement(resultExponent);
 
         //Extend dividend mantissa for better precision
         boolean[] extended = new boolean[MANTISSA_SIZE * 2 + 2];
         System.arraycopy(copy.getFullMantissa(), 0, extended, MANTISSA_SIZE + 1, MANTISSA_SIZE + 1);
-        boolean[] div = BinaryArrayUtils.binaryDivide(extended, toDivideBy.getFullMantissa()).getKey();
+        boolean[] division = BinaryArrayUtils.binaryDivide(extended, toDivideBy.getFullMantissa()).getKey();
 
         //Normalization step
-        int shift = MANTISSA_SIZE - (BinaryArrayUtils.mostSignificantOne(div) - 1);
-        div = BinaryArrayUtils.binaryShiftLeft(div, shift);
+        int shift = MANTISSA_SIZE - (BinaryArrayUtils.mostSignificantOne(division) - 1);
+        division = BinaryArrayUtils.binaryShiftLeft(division, shift);
         //Truncate mantissa back to 24-1 bits
         boolean[] shorten = new boolean[MANTISSA_SIZE];
-        System.arraycopy(div, 1, shorten, 0, MANTISSA_SIZE);
+        System.arraycopy(division, 1, shorten, 0, MANTISSA_SIZE);
 
         //Account for normalization shift
-        for (int i = 0; i < shift - 1; i++) e = BinaryArrayUtils.decrement(e);
+        for (int i = 0; i < shift - 1; i++) resultExponent = BinaryArrayUtils.binaryDecrement(resultExponent);
 
-        copy.setExponent(e);
+        copy.setExponent(resultExponent);
         copy.setMantissa(shorten);
 
         return copy;
@@ -171,36 +194,40 @@ public class BinaryFloat extends BinaryContainer<Float, BinaryFloat> {
 
         BinaryFloat copy = new BinaryFloat(this);
 
-        boolean s1 = copy.container[LENGTH - 1];
-        boolean s2 = toAdd.container[LENGTH - 1];
-        boolean s = s1 ^ s2;
+        boolean firstSign = copy.container[LENGTH - 1];
+        boolean secondSign = toAdd.container[LENGTH - 1];
+        boolean resulSign = firstSign ^ secondSign;
 
-        boolean[] e1 = copy.getExponent();
-        boolean[] e2 = toAdd.getExponent();
-        boolean[] dE = BinaryArrayUtils.binarySubtract(e1, e2);
+        boolean[] greaterExponent = copy.getExponent();
+        boolean[] lesserExponent = toAdd.getExponent();
+        boolean[] exponentDelta = BinaryArrayUtils.binarySubtract(greaterExponent, lesserExponent);
 
-        boolean[] m1 = getFullMantissa();
-        boolean[] m2 = toAdd.getFullMantissa();
+        boolean[] greaterMantissa = getFullMantissa();
+        boolean[] lesserMantissa = toAdd.getFullMantissa();
 
-        m2 = BinaryArrayUtils.binaryShiftRight(m2, BinaryArrayUtils.magnitudeFromBinary(dE));
+        lesserMantissa =
+                BinaryArrayUtils.binaryShiftRight(
+                        lesserMantissa, BinaryArrayUtils.magnitudeFromBinary(exponentDelta));
 
-        boolean carry = !s && BinaryArrayUtils.binaryAddGetCarry(m1, m2).getValue();
-        m1 = !s ? BinaryArrayUtils.binaryAdd(m1, m2) : BinaryArrayUtils.binarySubtract(m1, m2);
+        boolean carry = !resulSign && BinaryArrayUtils.binaryAddGetCarry(greaterMantissa, lesserMantissa).getValue();
+        greaterMantissa = !resulSign ?
+                BinaryArrayUtils.binaryAdd(greaterMantissa, lesserMantissa) :
+                BinaryArrayUtils.binarySubtract(greaterMantissa, lesserMantissa);
 
         if (carry) {
-            m1 = BinaryArrayUtils.binaryShiftRight(m1, 1);
-            m1[MANTISSA_SIZE] = true;
-            e1 = BinaryArrayUtils.increment(e1);
+            greaterMantissa = BinaryArrayUtils.binaryShiftRight(greaterMantissa, 1);
+            greaterMantissa[MANTISSA_SIZE] = true;
+            greaterExponent = BinaryArrayUtils.binaryIncrement(greaterExponent);
         }
 
-        int shift = MANTISSA_SIZE - (BinaryArrayUtils.mostSignificantOne(m1) - 1);
-        m1 = BinaryArrayUtils.binaryShiftLeft(m1, shift);
+        int shift = MANTISSA_SIZE - (BinaryArrayUtils.mostSignificantOne(greaterMantissa) - 1);
+        greaterMantissa = BinaryArrayUtils.binaryShiftLeft(greaterMantissa, shift);
         boolean[] shorten = new boolean[MANTISSA_SIZE];
-        System.arraycopy(m1, 1, shorten, 0, MANTISSA_SIZE);
-        e1 = BinaryArrayUtils.binarySubtract(e1, BinaryArrayUtils.magnitudeToBinary(shift - 1, EXPONENT_SIZE));
+        System.arraycopy(greaterMantissa, 1, shorten, 0, MANTISSA_SIZE);
+        greaterExponent = BinaryArrayUtils.binarySubtract(greaterExponent, BinaryArrayUtils.magnitudeToBinary(shift - 1, EXPONENT_SIZE));
 
-        copy.setSign(s1);
-        copy.setExponent(e1);
+        copy.setSign(firstSign);
+        copy.setExponent(greaterExponent);
         copy.setMantissa(shorten);
 
         return copy;
@@ -237,7 +264,7 @@ public class BinaryFloat extends BinaryContainer<Float, BinaryFloat> {
 
     public int getDecimalExponent() {
         int e = BinaryArrayUtils.magnitudeFromBinary(getExponent());
-        return e - 127;
+        return e - DECIMAL_BIAS;
     }
 
     public float getDecimalMantissa() {
@@ -285,7 +312,8 @@ public class BinaryFloat extends BinaryContainer<Float, BinaryFloat> {
 
     @Override
     public Float getDecimal() {
-        if((BinaryArrayUtils.mostSignificantOne(getExponent()) == -1) && BinaryArrayUtils.mostSignificantOne(getMantissa()) == -1)
+        if ((BinaryArrayUtils.mostSignificantOne(getExponent()) == -1) &&
+                BinaryArrayUtils.mostSignificantOne(getMantissa()) == -1)
             return 0f;
 
         return getSign() * getDecimalMantissa() * (float) Math.pow(2, getDecimalExponent());

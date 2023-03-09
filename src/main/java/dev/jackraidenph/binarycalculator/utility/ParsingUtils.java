@@ -10,7 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ParsingUtils {
-    public static final HashMap<String, Integer> PRECEDENCE = new HashMap<>() {{
+    public static final Map<String, Integer> PRECEDENCE = new HashMap<>() {{
         put("*", 3);
         put("/", 3);
         put("+", 2);
@@ -41,7 +41,7 @@ public class ParsingUtils {
         return operation.apply(lb, rb);
     }
 
-    public static HashMap<String, BiFunction<String, String, ?>> OPERATIONS_MAP = new HashMap<>() {{
+    public static final HashMap<String, BiFunction<String, String, ?>> OPERATIONS_MAP = new HashMap<>() {{
         put("+", (left, right) -> operate(left, right, BinaryContainer::add));
         put("-", (left, right) -> operate(left, right, BinaryContainer::subtract));
         put("*", (left, right) -> operate(left, right, BinaryContainer::multiply));
@@ -57,31 +57,36 @@ public class ParsingUtils {
             if (tokenMatcher.find()) {
                 String token = tokenMatcher.group();
                 if ((token.length() == 1) && OPERATORS.contains(token)) {
-                    if (stack.empty())
+                    if (stack.empty()) {
                         stack.push(token);
+                    }
                     else if (token.equals(")")) {
-                        while (!stack.peek().equals("("))
+                        while (!stack.peek().equals("(")) {
                             output.add(stack.pop());
+                        }
                         stack.pop();
                     } else {
                         while (!token.equals("(") &&
                                 ((PRECEDENCE.get(stack.peek()) > PRECEDENCE.get(token)) ||
                                         (Objects.equals(PRECEDENCE.get(stack.peek()), PRECEDENCE.get(token)) && !RIGHT_ASSOC.contains(token)))
-                        )
+                        ) {
                             output.add(stack.pop());
+                        }
                         stack.push(token);
                     }
-                } else output.add(token);
+                } else { output.add(token); }
                 toConvert = toConvert.replaceFirst(Pattern.quote(token), "");
-            } else
+            } else {
                 break;
+            }
         }
 
-        while (!stack.empty())
+        while (!stack.empty()) {
             output.add(stack.pop());
+        }
 
         return output;
-    }//3 + 4 * 2 / ( 1 - 5 ) * 2 * 3
+    }//3 + 4 * 2 / ( 1 - (5) ) * 2 * 3
 
     public static String parsePostfix(Queue<String> toParse) {
         Stack<String> stack = new Stack<>();
@@ -105,10 +110,6 @@ public class ParsingUtils {
         }
 
         return stack.isEmpty() ? "" : stack.pop();
-    }
-
-    public static String floatFullPrecisionFormat(Float val) {
-        return String.format(Locale.US, "%.38f", val);
     }
 
     public static String floatFivePrecisionFormat(Float val) {

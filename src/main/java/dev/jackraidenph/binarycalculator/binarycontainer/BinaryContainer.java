@@ -28,12 +28,18 @@ public abstract class BinaryContainer<N extends Number, T extends BinaryContaine
         return (T) this;
     }
 
-    public N getDecimal(){return null;};
-    public T add(T toAdd){return (T) this;};
-    public T subtract(T toSubtract){return (T) this;};
-    public T multiply(T toMultiplyBy){return (T) this;};
-    public T divideBy(T toDivideBy){return (T) this;};
-    public int compare(T another){return 0;};
+    public N getDecimal(){return null;}
+
+    public T add(T toAdd){return (T) this;}
+
+    public T subtract(T toSubtract){return (T) this;}
+
+    public T multiply(T toMultiplyBy){return (T) this;}
+
+    public T divideBy(T toDivideBy){return (T) this;}
+
+    public int compare(T another){return 0;}
+
     public int getSign() {return 0;}
     protected T setSign(boolean negative) {return (T) this;}
 
